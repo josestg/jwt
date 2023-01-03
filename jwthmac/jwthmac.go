@@ -3,7 +3,7 @@ package jwthmac
 import (
 	"crypto"
 	"crypto/hmac"
-	"fmt"
+	"github.com/josestg/jwt"
 )
 
 // HMAC is a HMAC signer.
@@ -25,7 +25,7 @@ func (h *HMAC) Verify(msg []byte, sig []byte) error {
 	// we can ignore the error, it will always be nil.
 	computed, _ := h.Sign(msg)
 	if !hmac.Equal(computed, sig) {
-		return fmt.Errorf("invalid signature")
+		return jwt.ErrInvalidSignature
 	}
 	return nil
 }

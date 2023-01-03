@@ -87,8 +87,8 @@ func TestNewRoundRobin(t *testing.T) {
 
 	// try to get a verifier for a kid that is not registered
 	_, err = rr.Verifier(jwt.HS256, "not-registered")
-	if err != jwt.ErrKeyNotFound {
-		t.Errorf("expected ErrKeyNotFound; got %v", err)
+	if err != jwt.ErrMissingKID {
+		t.Errorf("expected ErrMissingKID; got %v", err)
 	}
 }
 

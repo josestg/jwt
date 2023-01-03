@@ -76,5 +76,5 @@ func (r *RoundRobin) Verifier(alg jwt.Algorithm, kid string) (jwt.Verifier, erro
 		}
 	}
 
-	return nil, jwt.ErrKeyNotFound
+	return nil, jwt.ErrMissingKID
 }
