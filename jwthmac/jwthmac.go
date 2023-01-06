@@ -6,7 +6,7 @@ import (
 	"github.com/josestg/jwt"
 )
 
-// HMAC is a HMAC signer.
+// HMAC is a HMAC signer and verifier implementation.
 // It implements both Signer and Verifier interfaces.
 type HMAC struct {
 	key  []byte

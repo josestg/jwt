@@ -1,11 +1,14 @@
 package jwt_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"github.com/josestg/jwt"
 	"github.com/josestg/jwt/jwthmac"
 	"github.com/josestg/jwt/jwtrepo"
+	"github.com/josestg/jwt/jwtrsa"
 	"reflect"
 	"testing"
 	"time"
@@ -184,58 +187,74 @@ func TestToken_Sign_Parse_Verify(t *testing.T) {
 		JWTID:          "abc123",
 	}
 
+	rsaKey1, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+
+	rsaKey2, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+
 	hmac1 := jwthmac.NewHMAC([]byte("secret"), jwt.HS256.HashFunc())
 	hmac2 := jwthmac.NewHMAC([]byte("private"), jwt.HS256.HashFunc())
+	rsa1 := jwtrsa.NewRSA(rsaKey1, jwt.RS256.HashFunc())
+	rsa2 := jwtrsa.NewRSA(rsaKey2, jwt.RS256.HashFunc())
 
 	repo1 := jwtrepo.NewRoundRobin()
-	repo1.Register(jwt.HS256, "kid-1", hmac1)
-	repo1.Register(jwt.HS256, "kid-2", hmac2)
+	repo1.Register(jwt.HS256, "kid-hmac-1", hmac1)
+	repo1.Register(jwt.HS256, "kid-hmac-2", hmac2)
+	repo1.Register(jwt.RS256, "kid-rsa-1", rsa1)
+	repo1.Register(jwt.RS256, "kid-rsa-2", rsa2)
 
 	repo2 := jwtrepo.NewRoundRobin()
-	repo2.Register(jwt.HS256, "kid-1", hmac2)
-	repo2.Register(jwt.HS256, "kid-2", hmac1)
+	repo2.Register(jwt.HS256, "kid-hmac-1", hmac2)
+	repo2.Register(jwt.HS256, "kid-hmac-2", hmac1)
 
 	for i := 0; i < 10; i++ {
 		i := i
 		t.Run(fmt.Sprintf("round %d", i), func(t *testing.T) {
 			t.Parallel()
-			token := jwt.NewToken(&claims, jwt.HS256)
-			signedToken, err := token.Sign(repo1)
-			if err != nil {
-				t.Errorf("expected nil; got err %v", err)
-			}
+			for _, alg := range []jwt.Algorithm{jwt.HS256, jwt.RS256} {
+				token := jwt.NewToken(&claims, alg)
+				signedToken, err := token.Sign(repo1)
+				if err != nil {
+					t.Errorf("expected nil; got err %v", err)
+				}
 
-			parsed, err := jwt.Parse[jwt.RegisteredClaims](signedToken.String())
-			if err != nil {
-				t.Errorf("expected nil; got err %v", err)
-			}
+				parsed, err := jwt.Parse[jwt.RegisteredClaims](signedToken.String())
+				if err != nil {
+					t.Errorf("expected nil; got err %v", err)
+				}
 
-			err = parsed.Verify(repo1)
-			if err != nil {
-				t.Errorf("expected nil; got err %v", err)
-			}
+				err = parsed.Verify(repo1)
+				if err != nil {
+					t.Errorf("expected nil; got err %v", err)
+				}
 
-			equal := reflect.DeepEqual(*parsed.Claims, claims)
-			if !equal {
-				t.Errorf("expected %v; got %v", claims, parsed.Claims)
-			}
+				equal := reflect.DeepEqual(*parsed.Claims, claims)
+				if !equal {
+					t.Errorf("expected %v; got %v", claims, parsed.Claims)
+				}
 
-			t.Log("--------------------")
-			t.Logf("Round       : %d", i)
-			t.Logf("KID         : %s", parsed.Header.KeyID)
-			t.Logf("Claims      : %+v", claims)
-			t.Logf("Signed      : %+v", signedToken)
-			t.Logf("Parsed      : %+v", parsed)
-			t.Log("--------------------")
-			err = parsed.Claims.Valid(jwt.NumericDateOf(fixedTime))
-			if err != nil {
-				t.Errorf("expected nil; got err %v", err)
-			}
+				t.Log("--------------------")
+				t.Logf("Round       : %d", i)
+				t.Logf("KID         : %s", parsed.Header.KeyID)
+				t.Logf("Claims      : %+v", claims)
+				t.Logf("Signed      : %+v", signedToken)
+				t.Logf("Parsed      : %+v", parsed)
+				t.Log("--------------------")
+				err = parsed.Claims.Valid(jwt.NumericDateOf(fixedTime))
+				if err != nil {
+					t.Errorf("expected nil; got err %v", err)
+				}
 
-			// tempered token
-			err = parsed.Verify(repo2)
-			if err == nil {
-				t.Errorf("expected err; got nil")
+				// tempered token
+				err = parsed.Verify(repo2)
+				if err == nil {
+					t.Errorf("expected err; got nil")
+				}
 			}
 		})
 	}
