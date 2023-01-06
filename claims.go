@@ -93,7 +93,7 @@ type RegisteredClaims struct {
 }
 
 // Valid checks token expiration and not before at a given time.
-// If any error occurs, it returns either ErrTokenExpired or ErrTokenNotValidYet.
+// If any error occurs, it returns either ErrExpired or ErrNotValidYet.
 func (r *RegisteredClaims) Valid(at NumericDate) error {
 	if r.ExpirationTime != 0 && at > r.ExpirationTime {
 		return ErrExpired

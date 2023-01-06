@@ -9,9 +9,14 @@ import (
 )
 
 var (
+	// ErrAlgorithmNotRegistered indicates that the algorithm is not registered.
 	ErrAlgorithmNotRegistered = errors.New("algorithm not registered")
-	ErrMissingKID             = errors.New("key not found")
-	ErrInvalidSignature       = errors.New("invalid signature")
+
+	// ErrMissingKID indicates that the token is missing the key ID.
+	ErrMissingKID = errors.New("key not found")
+
+	// ErrInvalidSignature indicates that the signature is invalid.
+	ErrInvalidSignature = errors.New("invalid signature")
 )
 
 // Signer is a cryptographic signer interface.
