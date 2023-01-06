@@ -1,11 +1,14 @@
 package jwt_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"fmt"
 	"github.com/josestg/jwt"
+	"github.com/josestg/jwt/jwtecdsa"
 	"github.com/josestg/jwt/jwthmac"
 	"github.com/josestg/jwt/jwtrepo"
 	"github.com/josestg/jwt/jwtrsa"
@@ -197,16 +200,31 @@ func TestToken_Sign_Parse_Verify(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
+	ecKey1, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+
+	ecKey2, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+
 	hmac1 := jwthmac.NewHMAC([]byte("secret"), jwt.HS256.HashFunc())
 	hmac2 := jwthmac.NewHMAC([]byte("private"), jwt.HS256.HashFunc())
 	rsa1 := jwtrsa.NewRSA(rsaKey1, jwt.RS256.HashFunc())
 	rsa2 := jwtrsa.NewRSA(rsaKey2, jwt.RS256.HashFunc())
+
+	ecdsa1 := jwtecdsa.NewECDSA(ecKey1, jwt.ES256.HashFunc())
+	ecdsa2 := jwtecdsa.NewECDSA(ecKey2, jwt.ES256.HashFunc())
 
 	repo1 := jwtrepo.NewRoundRobin()
 	repo1.Register(jwt.HS256, "kid-hmac-1", hmac1)
 	repo1.Register(jwt.HS256, "kid-hmac-2", hmac2)
 	repo1.Register(jwt.RS256, "kid-rsa-1", rsa1)
 	repo1.Register(jwt.RS256, "kid-rsa-2", rsa2)
+	repo1.Register(jwt.ES256, "kid-ecdsa-1", ecdsa1)
+	repo1.Register(jwt.ES256, "kid-ecdsa-2", ecdsa2)
 
 	repo2 := jwtrepo.NewRoundRobin()
 	repo2.Register(jwt.HS256, "kid-hmac-1", hmac2)
@@ -216,7 +234,7 @@ func TestToken_Sign_Parse_Verify(t *testing.T) {
 		i := i
 		t.Run(fmt.Sprintf("round %d", i), func(t *testing.T) {
 			t.Parallel()
-			for _, alg := range []jwt.Algorithm{jwt.HS256, jwt.RS256} {
+			for _, alg := range []jwt.Algorithm{jwt.HS256, jwt.RS256, jwt.ES256} {
 				token := jwt.NewToken(&claims, alg)
 				signedToken, err := token.Sign(repo1)
 				if err != nil {
